@@ -33,6 +33,8 @@ class VIEW3D_OT_vr_save_position(bpy.types.Operator):
     bl_idname = "view3d.vr_save_pose"
     bl_label = "Save VR Poses"
 
+    ## TODO WARN USER IF VR ADDON IS NOT ENABLED OR SESSIONS IS NOT STARTED
+
     @staticmethod
     def _get_controller_pose_matrix(context, idx, is_grip, scale):
         wm = context.window_manager
