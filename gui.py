@@ -165,27 +165,78 @@ class VRMOCAP_PT_vr_viewport_feedback(Panel):
         layout.prop(view3d, "mirror_xr_session")
 
 
+def armature_filter(self, object):
+    return object.type == 'ARMATURE'
+
+
 class VRMOCAP_PT_vr_save_position(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "VR"
     bl_label = "VR Capture"
 
+    # Pointer definitions
+    bpy.types.Scene.obj_selection = bpy.props.PointerProperty(
+        type=bpy.types.Object,
+        poll=armature_filter,
+    )
+    bpy.types.Scene.right_bone_selection = bpy.props.StringProperty()
+    bpy.types.Scene.left_bone_selection = bpy.props.StringProperty()
+
+    def draw_controller_properties(self, context, col, target):
+        col.prop(target, "fly_forward")
+        col.prop(target, "fly_left")
+        col.prop(target, "nav_reset")
+        col.prop(target, "nav_grab")
+        col.prop(target, "teleport")
+
     def draw(self, context):
-        row = self.layout.row()
+        layout = self.layout
+        row = layout.row()
         scene = context.scene
-        row.prop(scene, "vr_target_left", text="Left")
-        row.prop(scene, "vr_target_right", text="Right")
-        enabled = context.scene.vr_motion_capture
-        self.layout.operator("view3d.vr_save_pose", depress=enabled)
-        col = self.layout.column()
-        col.prop(scene, "fly_forward")
-        col.prop(scene, "fly_backward")
-        col.prop(scene, "fly_left")
-        col.prop(scene, "fly_right")
-        col.prop(scene, "nav_reset")
-        col.prop(scene, "nav_grab")
-        col.prop(scene, "teleport")
+        enabled = scene.vr_motion_capture
+        layout.operator("view3d.vr_save_pose", depress=enabled)
+        scene = context.scene
+        row = layout.row()
+        row.prop_search(
+            scene,
+            "obj_selection",
+            context.scene,
+            "objects",
+            text="Object",
+        )
+        if context.scene.obj_selection is None:
+            return
+        row = layout.row()
+        row.prop_search(
+            scene,
+            "right_bone_selection",
+            context.scene.obj_selection.pose,
+            "bones",
+            text="Bone",
+        )
+        row.prop_search(
+            scene,
+            "left_bone_selection",
+            scene.obj_selection.pose,
+            "bones",
+            text="Bone",
+        )
+        row = self.layout.row()
+        split = row.split(factor=0.5)
+        if scene.vr_target_left:
+            col = split.column()
+            target = context.scene.obj_selection.pose.bones[
+                context.scene.left_bone_selection
+            ].vr_mocap
+            self.draw_controller_properties(context, col, target)
+
+        if scene.vr_target_left:
+            col = split.column()
+            target = context.scene.obj_selection.pose.bones[
+                context.scene.right_bone_selection
+            ].vr_mocap
+            self.draw_controller_properties(context, col, target)
 
 
 ### Info.
@@ -204,6 +255,84 @@ class VRMOCAP_PT_vr_info(bpy.types.Panel):
         layout.label(icon='ERROR', text="Built without VR/OpenXR features")
 
 
+### Landmarks.
+class VRMOCAP_MT_vr_landmark_menu(Menu):
+    bl_label = "Landmark Controls"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("vrmocap.vr_camera_landmark_from_session")
+        layout.operator("vrmocap.vr_landmark_from_camera")
+        layout.operator("vrmocap.update_vr_landmark")
+        layout.separator()
+        layout.operator("vrmocap.cursor_to_vr_landmark")
+        layout.operator("vrmocap.camera_to_vr_landmark")
+        layout.operator("vrmocap.add_camera_from_vr_landmark")
+
+
+class VRMOCAP_UL_vr_landmarks(UIList):
+    def draw_item(
+        self, context, layout, _data, item, icon, _active_data, _active_propname, index
+    ):
+        landmark = item
+        landmark_active_idx = context.scene.vr_landmarks_active
+
+        layout.emboss = 'NONE'
+
+        layout.prop(landmark, "name", text="")
+
+        icon = 'RADIOBUT_ON' if (index == landmark_active_idx) else 'RADIOBUT_OFF'
+        props = layout.operator("view3d.vr_landmark_activate", text="", icon=icon)
+        props.index = index
+
+
+class VRMOCAP_PT_vr_landmarks(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "VR"
+    bl_label = "Landmarks"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        landmark_selected = properties.VRLandmark.get_selected_landmark(context)
+
+        layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
+
+        row = layout.row()
+
+        row.template_list(
+            "VRMOCAP_UL_vr_landmarks",
+            "",
+            scene,
+            "vr_landmarks",
+            scene,
+            "vr_landmarks_selected",
+            rows=3,
+        )
+
+        col = row.column(align=True)
+        col.operator("view3d.vr_landmark_add", icon='ADD', text="")
+        col.operator("view3d.vr_landmark_remove", icon='REMOVE', text="")
+        col.operator("view3d.vr_landmark_from_session", icon='PLUS', text="")
+
+        col.menu("VRMOCAP_MT_vr_landmark_menu", icon='DOWNARROW_HLT', text="")
+
+        if landmark_selected:
+            layout.prop(landmark_selected, "type")
+
+            if landmark_selected.type == 'OBJECT':
+                layout.prop(landmark_selected, "base_pose_object")
+                layout.prop(landmark_selected, "base_scale", text="Scale")
+            elif landmark_selected.type == 'CUSTOM':
+                layout.prop(landmark_selected, "base_pose_location", text="Location")
+                layout.prop(landmark_selected, "base_pose_angle", text="Angle")
+                layout.prop(landmark_selected, "base_scale", text="Scale")
+
+
 classes = (
     VRMOCAP_PT_vr_session,
     VRMOCAP_PT_vr_session_view,
@@ -211,6 +340,9 @@ classes = (
     VRMOCAP_PT_vr_actionmaps,
     VRMOCAP_PT_vr_viewport_feedback,
     VRMOCAP_PT_vr_save_position,
+    VRMOCAP_MT_vr_landmark_menu,
+    VRMOCAP_UL_vr_landmarks,
+    VRMOCAP_PT_vr_landmarks,
 )
 
 

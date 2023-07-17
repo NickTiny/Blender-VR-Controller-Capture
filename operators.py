@@ -1,4 +1,12 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
+if "bpy" in locals():
+    import importlib
+
+    importlib.reload(properties)
+else:
+    from . import properties
+
+
 import bpy
 import gpu
 from bpy.app.translations import pgettext_data as data_
@@ -12,14 +20,24 @@ from math import radians
 from mathutils import Euler, Matrix, Quaternion, Vector
 
 
-class VRMOCAP_OT_vr_save_position(bpy.types.Operator):
+class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
     bl_idname = "view3d.vr_save_pose"
-    bl_label = "Save VR Poses"
+    bl_label = "Stop Saving VR Poses"
+
+
+class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
+    bl_idname = "view3d.vr_save_pose"
+    bl_label = "Start Saving VR Poses"
 
     ## TODO WARN USER IF VR ADDON IS NOT ENABLED OR SESSIONS IS NOT STARTED
     _left_target = None
     _right_target = None
     _wm = None
+
+    @classmethod
+    def poll(cls, context):
+        view3d = context.space_data
+        return context.window_manager.xr_session_state != None
 
     @staticmethod
     def _get_controller_pose_matrix(context, idx, wm):
@@ -46,77 +64,44 @@ class VRMOCAP_OT_vr_save_position(bpy.types.Operator):
         obj.animation_data.action = action
         return obj.animation_data.action
 
+    def save_controller_data(self, context, session_state, hand, key):
+        # TODO SAVE DATA TO BONE SELECTIONS
+        scene = context.scene
+        target = context.scene.obj_selection.pose.bones[context.scene.bone_selection_l]
+        scene[f'{key}'] = session_state.action_state_get(
+            context=context,
+            action_set_name=session_state.actionmaps[0].name,
+            action_name=f"{key}",
+            user_path=f'/user/hand/{hand}',
+        )[0]
+        scene.keyframe_insert(data_path=f'["{key}"]')
+
+    def cancel(self, context):
+        bpy.ops.screen.animation_cancel()
+        context.scene.vr_motion_capture = False
+
     def modal(self, context, event):
-        if event.type in {'RIGHTMOUSE', 'ESC'}:
-            context.scene.vr_motion_capture = False
-            return {'CANCELLED'}
+        if event.type in {'LEFTMOUSE', 'RIGHTMOUSE', 'ESC'}:
+            self.cancel(context)
+            return {'FINISHED'}
 
         if context.scene.frame_current == context.scene.frame_end:
-            context.scene.vr_motion_capture = False
+            self.cancel(context)
             return {'FINISHED'}
+
         self.keyframe_grip(context, 0, self._wm)
-        scene = context.scene
         session_state = context.window_manager.xr_session_state
-
-        scene.fly_forward = session_state.action_state_get(
-            context=context,
-            action_set_name=session_state.actionmaps[0].name,
-            action_name="fly_forward",
-            user_path='/user/hand/left',
-        )[0]
-        scene.keyframe_insert(data_path='["fly_forward"]')
-        scene.fly_backward = session_state.action_state_get(
-            context=context,
-            action_set_name=session_state.actionmaps[0].name,
-            action_name="fly_backward",
-            user_path='/user/hand/left',
-        )[0]
-        scene.keyframe_insert(data_path='["fly_backward"]')
-        scene.fly_left = session_state.action_state_get(
-            context=context,
-            action_set_name=session_state.actionmaps[0].name,
-            action_name="fly_left",
-            user_path='/user/hand/left',
-        )[0]
-        scene.keyframe_insert(data_path='["fly_left"]')
-        scene.fly_right = session_state.action_state_get(
-            context=context,
-            action_set_name=session_state.actionmaps[0].name,
-            action_name="fly_right",
-            user_path='/user/hand/left',
-        )[0]
-        scene.keyframe_insert(data_path='["fly_right"]')
-        scene.nav_reset = session_state.action_state_get(
-            context=context,
-            action_set_name=session_state.actionmaps[0].name,
-            action_name="nav_reset",
-            user_path='/user/hand/left',
-        )[0]
-        scene.nav_grab = session_state.action_state_get(
-            context=context,
-            action_set_name=session_state.actionmaps[0].name,
-            action_name="nav_grab",
-            user_path='/user/hand/left',
-        )[0]
-        scene.keyframe_insert(data_path='["nav_grab"]')
-
-        scene.teleport = session_state.action_state_get(
-            context=context,
-            action_set_name=session_state.actionmaps[0].name,
-            action_name="teleport",
-            user_path='/user/hand/left',
-        )[0]
-        scene.keyframe_insert(data_path='["teleport"]')
-        scene.nav_reset = session_state.action_state_get(
-            context=context,
-            action_set_name=session_state.actionmaps[0].name,
-            action_name="nav_reset",
-            user_path='/user/hand/left',
-        )[0]
-        scene.keyframe_insert(data_path='["nav_reset"]')
+        self.save_controller_data(context, session_state, 'left', 'fly_forward')
+        self.save_controller_data(context, session_state, 'left', 'fly_left')
+        self.save_controller_data(context, session_state, 'left', 'nav_grab')
+        self.save_controller_data(context, session_state, 'left', 'teleport')
+        self.save_controller_data(context, session_state, 'left', 'nav_reset')
         return {'PASS_THROUGH'}
 
     def execute(self, context):
+        if context.scene.vr_motion_capture == True:
+            self.report({'ERROR'}, "VR Mocap Session Already in Progress")
+            return {'CANCELLED'}
         if (
             context.scene.vr_target_left is None
             or context.scene.vr_target_right is None
@@ -131,7 +116,7 @@ class VRMOCAP_OT_vr_save_position(bpy.types.Operator):
         self._left_target
         self._wm = context.window_manager
         self._wm.modal_handler_add(self)
-
+        bpy.ops.screen.animation_play()
         return {'RUNNING_MODAL'}
 
 
@@ -311,13 +296,285 @@ class VRMOCAP_GGT_vr_controller_poses(GizmoGroup):
             )
 
 
+### Landmarks.
+class VIEW3D_OT_vr_landmark_add(Operator):
+    bl_idname = "view3d.vr_landmark_add"
+    bl_label = "Add VR Landmark"
+    bl_description = "Add a new VR landmark to the list and select it"
+    bl_options = {'UNDO', 'REGISTER'}
+
+    def execute(self, context):
+        scene = context.scene
+        landmarks = scene.vr_landmarks
+
+        landmarks.add()
+
+        # select newly created set
+        scene.vr_landmarks_selected = len(landmarks) - 1
+
+        return {'FINISHED'}
+
+
+class VIEW3D_OT_vr_landmark_from_camera(Operator):
+    bl_idname = "view3d.vr_landmark_from_camera"
+    bl_label = "Add VR Landmark from Camera"
+    bl_description = (
+        "Add a new VR landmark from the active camera object to the list and select it"
+    )
+    bl_options = {'UNDO', 'REGISTER'}
+
+    @classmethod
+    def poll(cls, context):
+        cam_selected = False
+
+        vl_objects = bpy.context.view_layer.objects
+        if vl_objects.active and vl_objects.active.type == 'CAMERA':
+            cam_selected = True
+        return cam_selected
+
+    def execute(self, context):
+        scene = context.scene
+        landmarks = scene.vr_landmarks
+        cam = context.view_layer.objects.active
+        lm = landmarks.add()
+        lm.type = 'OBJECT'
+        lm.base_pose_object = cam
+        lm.name = "LM_" + cam.name
+
+        # select newly created set
+        scene.vr_landmarks_selected = len(landmarks) - 1
+
+        return {'FINISHED'}
+
+
+class VIEW3D_OT_vr_landmark_from_session(Operator):
+    bl_idname = "view3d.vr_landmark_from_session"
+    bl_label = "Add VR Landmark from Session"
+    bl_description = "Add VR landmark from the viewer pose of the running VR session to the list and select it"
+    bl_options = {'UNDO', 'REGISTER'}
+
+    @classmethod
+    def poll(cls, context):
+        return bpy.types.XrSessionState.is_running(context)
+
+    def execute(self, context):
+        scene = context.scene
+        landmarks = scene.vr_landmarks
+        wm = context.window_manager
+
+        lm = landmarks.add()
+        lm.type = "CUSTOM"
+        scene.vr_landmarks_selected = len(landmarks) - 1
+
+        loc = wm.xr_session_state.viewer_pose_location
+        rot = wm.xr_session_state.viewer_pose_rotation.to_euler()
+
+        lm.base_pose_location = loc
+        lm.base_pose_angle = rot[2]
+
+        return {'FINISHED'}
+
+
+class VIEW3D_OT_vr_camera_landmark_from_session(Operator):
+    bl_idname = "view3d.vr_camera_landmark_from_session"
+    bl_label = "Add Camera and VR Landmark from Session"
+    bl_description = "Create a new Camera and VR Landmark from the viewer pose of the running VR session and select it"
+    bl_options = {'UNDO', 'REGISTER'}
+
+    @classmethod
+    def poll(cls, context):
+        return bpy.types.XrSessionState.is_running(context)
+
+    def execute(self, context):
+        scene = context.scene
+        landmarks = scene.vr_landmarks
+        wm = context.window_manager
+
+        lm = landmarks.add()
+        lm.type = 'OBJECT'
+        scene.vr_landmarks_selected = len(landmarks) - 1
+
+        loc = wm.xr_session_state.viewer_pose_location
+        rot = wm.xr_session_state.viewer_pose_rotation.to_euler()
+
+        cam = bpy.data.cameras.new(data_("Camera") + "_" + lm.name)
+        new_cam = bpy.data.objects.new(data_("Camera") + "_" + lm.name, cam)
+        scene.collection.objects.link(new_cam)
+        new_cam.location = loc
+        new_cam.rotation_euler = rot
+
+        lm.base_pose_object = new_cam
+
+        return {'FINISHED'}
+
+
+class VIEW3D_OT_update_vr_landmark(Operator):
+    bl_idname = "view3d.update_vr_landmark"
+    bl_label = "Update Custom VR Landmark"
+    bl_description = (
+        "Update the selected landmark from the current viewer pose in the VR session"
+    )
+    bl_options = {'UNDO', 'REGISTER'}
+
+    @classmethod
+    def poll(cls, context):
+        selected_landmark = properties.VRLandmark.get_selected_landmark(context)
+        return (
+            bpy.types.XrSessionState.is_running(context)
+            and selected_landmark.type == 'CUSTOM'
+        )
+
+    def execute(self, context):
+        wm = context.window_manager
+
+        lm = properties.VRLandmark.get_selected_landmark(context)
+
+        loc = wm.xr_session_state.viewer_pose_location
+        rot = wm.xr_session_state.viewer_pose_rotation.to_euler()
+
+        lm.base_pose_location = loc
+        lm.base_pose_angle = rot
+
+        # Re-activate the landmark to trigger viewer reset and flush landmark settings to the session settings.
+        properties.vr_landmark_active_update(None, context)
+
+        return {'FINISHED'}
+
+
+class VIEW3D_OT_vr_landmark_remove(Operator):
+    bl_idname = "view3d.vr_landmark_remove"
+    bl_label = "Remove VR Landmark"
+    bl_description = "Delete the selected VR landmark from the list"
+    bl_options = {'UNDO', 'REGISTER'}
+
+    def execute(self, context):
+        scene = context.scene
+        landmarks = scene.vr_landmarks
+
+        if len(landmarks) > 1:
+            landmark_selected_idx = scene.vr_landmarks_selected
+            landmarks.remove(landmark_selected_idx)
+
+            scene.vr_landmarks_selected -= 1
+
+        return {'FINISHED'}
+
+
+class VIEW3D_OT_cursor_to_vr_landmark(Operator):
+    bl_idname = "view3d.cursor_to_vr_landmark"
+    bl_label = "Cursor to VR Landmark"
+    bl_description = "Move the 3D Cursor to the selected VR Landmark"
+    bl_options = {'UNDO', 'REGISTER'}
+
+    @classmethod
+    def poll(cls, context):
+        lm = properties.VRLandmark.get_selected_landmark(context)
+        if lm.type == 'SCENE_CAMERA':
+            return context.scene.camera is not None
+        elif lm.type == 'OBJECT':
+            return lm.base_pose_object is not None
+
+        return True
+
+    def execute(self, context):
+        scene = context.scene
+        lm = properties.VRLandmark.get_selected_landmark(context)
+        if lm.type == 'SCENE_CAMERA':
+            lm_pos = scene.camera.location
+        elif lm.type == 'OBJECT':
+            lm_pos = lm.base_pose_object.location
+        else:
+            lm_pos = lm.base_pose_location
+        scene.cursor.location = lm_pos
+
+        return {'FINISHED'}
+
+
+class VIEW3D_OT_add_camera_from_vr_landmark(Operator):
+    bl_idname = "view3d.add_camera_from_vr_landmark"
+    bl_label = "New Camera from VR Landmark"
+    bl_description = "Create a new Camera from the selected VR Landmark"
+    bl_options = {'UNDO', 'REGISTER'}
+
+    def execute(self, context):
+        scene = context.scene
+        lm = properties.VRLandmark.get_selected_landmark(context)
+
+        cam = bpy.data.cameras.new(data_("Camera") + "_" + lm.name)
+        new_cam = bpy.data.objects.new(data_("Camera") + "_" + lm.name, cam)
+        scene.collection.objects.link(new_cam)
+        angle = lm.base_pose_angle
+        new_cam.location = lm.base_pose_location
+        new_cam.rotation_euler = (math.pi / 2, 0, angle)
+
+        return {'FINISHED'}
+
+
+class VIEW3D_OT_camera_to_vr_landmark(Operator):
+    bl_idname = "view3d.camera_to_vr_landmark"
+    bl_label = "Scene Camera to VR Landmark"
+    bl_description = "Position the scene camera at the selected landmark"
+    bl_options = {'UNDO', 'REGISTER'}
+
+    @classmethod
+    def poll(cls, context):
+        return context.scene.camera is not None
+
+    def execute(self, context):
+        scene = context.scene
+        lm = properties.VRLandmark.get_selected_landmark(context)
+
+        cam = scene.camera
+        angle = lm.base_pose_angle
+        cam.location = lm.base_pose_location
+        cam.rotation_euler = (math.pi / 2, 0, angle)
+
+        return {'FINISHED'}
+
+
+class VIEW3D_OT_vr_landmark_activate(Operator):
+    bl_idname = "view3d.vr_landmark_activate"
+    bl_label = "Activate VR Landmark"
+    bl_description = "Change to the selected VR landmark from the list"
+    bl_options = {'UNDO', 'REGISTER'}
+
+    index: bpy.props.IntProperty(
+        name="Index",
+        options={'HIDDEN'},
+    )
+
+    def execute(self, context):
+        scene = context.scene
+
+        if self.index >= len(scene.vr_landmarks):
+            return {'CANCELLED'}
+
+        scene.vr_landmarks_active = (
+            self.index
+            if self.properties.is_property_set("index")
+            else scene.vr_landmarks_selected
+        )
+
+        return {'FINISHED'}
+
+
 classes = (
     VRMOCAP_GT_vr_camera_cone,
     VRMOCAP_GT_vr_controller_grip,
     VRMOCAP_GT_vr_controller_aim,
     VRMOCAP_GGT_vr_viewer_pose,
     VRMOCAP_GGT_vr_controller_poses,
-    VRMOCAP_OT_vr_save_position,
+    VRMOCAP_OT_vr_save_position_start,
+    VIEW3D_OT_vr_landmark_add,
+    VIEW3D_OT_vr_landmark_from_camera,
+    VIEW3D_OT_vr_landmark_from_session,
+    VIEW3D_OT_vr_camera_landmark_from_session,
+    VIEW3D_OT_update_vr_landmark,
+    VIEW3D_OT_vr_landmark_remove,
+    VIEW3D_OT_cursor_to_vr_landmark,
+    VIEW3D_OT_add_camera_from_vr_landmark,
+    VIEW3D_OT_camera_to_vr_landmark,
+    VIEW3D_OT_vr_landmark_activate,
 )
 
 
