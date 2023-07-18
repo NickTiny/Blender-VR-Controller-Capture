@@ -29,7 +29,6 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
     bl_idname = "view3d.vr_save_pose"
     bl_label = "Start Saving VR Poses"
 
-    ## TODO WARN USER IF VR ADDON IS NOT ENABLED OR SESSIONS IS NOT STARTED
     _left_target = None
     _right_target = None
     _wm = None
@@ -41,6 +40,7 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
 
     @staticmethod
     def _get_controller_pose_matrix(context, idx, wm):
+        # TODO Fix Matrix Math so bones sync with controllers
         scale = 1.0
         session_state = wm.xr_session_state
         loc = session_state.controller_grip_location_get(context, idx)
@@ -53,10 +53,18 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
         return transmat @ rotmat @ scalemat
 
     def keyframe_grip(self, context, idx: int, wm):
-        target_object = self._left_target if idx == 0 else self._right_target
-        target_object.matrix_basis = self._get_controller_pose_matrix(context, idx, wm)
-        target_object.keyframe_insert('location')
-        target_object.keyframe_insert('rotation_euler')
+        bone_name = (
+            self.get_bone_via_hand(context, "left")
+            if idx == 0
+            else self.get_bone_via_hand(context, "right")
+        )
+        armature = context.scene.obj_selection
+        bones = armature.pose.bones
+        target_bone = bones[bone_name]
+        # TODO Verify this works on all bone rolls, see if there is a better way
+        target_bone.matrix = self._get_controller_pose_matrix(context, idx, wm)
+        target_bone.keyframe_insert('location')
+        target_bone.keyframe_insert('rotation_euler')
 
     def create_new_action(self, obj: bpy.types.Object):
         obj.animation_data_create()
@@ -64,17 +72,28 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
         obj.animation_data.action = action
         return obj.animation_data.action
 
-    def save_controller_data(self, context, session_state, hand, key):
-        # TODO SAVE DATA TO BONE SELECTIONS
+    def get_bone_via_hand(self, context, hand):
         scene = context.scene
-        target = context.scene.obj_selection.pose.bones[context.scene.bone_selection_l]
-        scene[f'{key}'] = session_state.action_state_get(
+        if hand == "right":
+            return scene.left_bone_selection
+        else:
+            return scene.right_bone_selection
+
+    def save_controller_data(self, context, session_state, hand, key):
+        scene = context.scene
+        armature = scene.obj_selection
+        bones = armature.pose.bones
+        bone_name = self.get_bone_via_hand(context, hand)
+        target = bones[bone_name].vr_mocap
+        target[f'{key}'] = session_state.action_state_get(
             context=context,
             action_set_name=session_state.actionmaps[0].name,
             action_name=f"{key}",
             user_path=f'/user/hand/{hand}',
         )[0]
-        scene.keyframe_insert(data_path=f'["{key}"]')
+        armature.keyframe_insert(
+            data_path=f'pose.bones["{bone_name}"].vr_mocap["{key}"]'
+        )
 
     def cancel(self, context):
         bpy.ops.screen.animation_cancel()
@@ -89,7 +108,8 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
             self.cancel(context)
             return {'FINISHED'}
 
-        self.keyframe_grip(context, 0, self._wm)
+        self.keyframe_grip(context, 0, self._wm)  # TODO make one function call
+        self.keyframe_grip(context, 1, self._wm)
         session_state = context.window_manager.xr_session_state
         self.save_controller_data(context, session_state, 'left', 'fly_forward')
         self.save_controller_data(context, session_state, 'left', 'fly_left')
