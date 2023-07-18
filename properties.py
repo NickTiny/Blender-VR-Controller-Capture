@@ -193,6 +193,8 @@ class VRLandmark(PropertyGroup):
 
 
 class VRMocapProps(PropertyGroup):
+    # TODO This doesn't allow for drivers
+    # VERIFY IF DRIVERS CAN BE ADDED, OTHERWISE SWITCH TO CUSTOM PROPS Tiny Style
     fly_forward: bpy.props.FloatProperty(name="Thumb Up")
     fly_left: bpy.props.FloatProperty(name="Thumb Left")
     nav_reset: bpy.props.FloatProperty(name="x_button")
