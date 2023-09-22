@@ -184,11 +184,16 @@ class VRMOCAP_PT_vr_save_position(bpy.types.Panel):
     bpy.types.Scene.left_bone_selection = bpy.props.StringProperty()
 
     def draw_controller_properties(self, context, col, target):
-        col.prop(target, "fly_forward")
-        col.prop(target, "fly_left")
-        col.prop(target, "nav_reset")
-        col.prop(target, "nav_grab")
-        col.prop(target, "teleport")
+        try:
+            target["fly_forward"]
+        except KeyError:
+            col.operator("view3d.add_custom_properties")
+        # if not target.fly_forward:
+        col.prop(target, '["fly_forward"]')
+        col.prop(target, '["fly_left"]')
+        col.prop(target, '["nav_reset"]')
+        col.prop(target, '["nav_grab"]')
+        col.prop(target, '["teleport"]')
 
     def draw(self, context):
         layout = self.layout
@@ -210,15 +215,15 @@ class VRMOCAP_PT_vr_save_position(bpy.types.Panel):
         row = layout.row()
         row.prop_search(
             scene,
-            "right_bone_selection",
-            context.scene.obj_selection.pose,
+            "left_bone_selection",
+            scene.obj_selection.pose,
             "bones",
             text="Bone",
         )
         row.prop_search(
             scene,
-            "left_bone_selection",
-            scene.obj_selection.pose,
+            "right_bone_selection",
+            context.scene.obj_selection.pose,
             "bones",
             text="Bone",
         )
@@ -228,14 +233,14 @@ class VRMOCAP_PT_vr_save_position(bpy.types.Panel):
             col = split.column()
             target = context.scene.obj_selection.pose.bones[
                 context.scene.left_bone_selection
-            ].vr_mocap
+            ]
             self.draw_controller_properties(context, col, target)
 
         if scene.vr_target_left:
             col = split.column()
             target = context.scene.obj_selection.pose.bones[
                 context.scene.right_bone_selection
-            ].vr_mocap
+            ]
             self.draw_controller_properties(context, col, target)
 
 

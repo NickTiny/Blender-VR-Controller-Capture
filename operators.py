@@ -18,6 +18,7 @@ from bpy.types import (
 import math
 from math import radians
 from mathutils import Euler, Matrix, Quaternion, Vector
+from .custom_properties import custom_float_create
 
 
 class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
@@ -75,25 +76,23 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
     def get_bone_via_hand(self, context, hand):
         scene = context.scene
         if hand == "right":
-            return scene.left_bone_selection
-        else:
             return scene.right_bone_selection
+        else:
+            return scene.left_bone_selection
 
     def save_controller_data(self, context, session_state, hand, key):
         scene = context.scene
         armature = scene.obj_selection
         bones = armature.pose.bones
         bone_name = self.get_bone_via_hand(context, hand)
-        target = bones[bone_name].vr_mocap
+        target = bones[bone_name]
         target[f'{key}'] = session_state.action_state_get(
             context=context,
             action_set_name=session_state.actionmaps[0].name,
             action_name=f"{key}",
             user_path=f'/user/hand/{hand}',
         )[0]
-        armature.keyframe_insert(
-            data_path=f'pose.bones["{bone_name}"].vr_mocap["{key}"]'
-        )
+        armature.keyframe_insert(data_path=f'pose.bones["{bone_name}"]["{key}"]')
 
     def cancel(self, context):
         bpy.ops.screen.animation_cancel()
@@ -116,6 +115,11 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
         self.save_controller_data(context, session_state, 'left', 'nav_grab')
         self.save_controller_data(context, session_state, 'left', 'teleport')
         self.save_controller_data(context, session_state, 'left', 'nav_reset')
+        self.save_controller_data(context, session_state, 'right', 'fly_forward')
+        self.save_controller_data(context, session_state, 'right', 'fly_left')
+        self.save_controller_data(context, session_state, 'right', 'nav_grab')
+        self.save_controller_data(context, session_state, 'right', 'teleport')
+        self.save_controller_data(context, session_state, 'right', 'nav_reset')
         return {'PASS_THROUGH'}
 
     def execute(self, context):
@@ -578,6 +582,23 @@ class VIEW3D_OT_vr_landmark_activate(Operator):
         return {'FINISHED'}
 
 
+class VRMOCAP_OT_add_custom_properties(bpy.types.Operator):
+    bl_idname = "view3d.add_custom_properties"
+    bl_label = "Add Custom Properties"
+
+    def execute(self, context):
+        armature = context.scene.obj_selection
+        left_target = armature.pose.bones[context.scene.left_bone_selection]
+        right_target = armature.pose.bones[context.scene.right_bone_selection]
+        names = ["fly_forward", "fly_left", "nav_reset", "nav_grab", "teleport"]
+        for target in [left_target, right_target]:
+            for name in names:
+                custom_float_create(
+                    target=target, value=0.0, name=name, min=-9999.9, max=9999.9
+                )
+        return {'FINISHED'}
+
+
 classes = (
     VRMOCAP_GT_vr_camera_cone,
     VRMOCAP_GT_vr_controller_grip,
@@ -585,6 +606,7 @@ classes = (
     VRMOCAP_GGT_vr_viewer_pose,
     VRMOCAP_GGT_vr_controller_poses,
     VRMOCAP_OT_vr_save_position_start,
+    VRMOCAP_OT_add_custom_properties,
     VIEW3D_OT_vr_landmark_add,
     VIEW3D_OT_vr_landmark_from_camera,
     VIEW3D_OT_vr_landmark_from_session,

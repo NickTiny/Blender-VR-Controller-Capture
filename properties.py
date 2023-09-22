@@ -202,10 +202,7 @@ class VRMocapProps(PropertyGroup):
     teleport: bpy.props.FloatProperty(name="Outer Trigger")
 
 
-classes = (
-    VRLandmark,
-    VRMocapProps,
-)
+classes = (VRLandmark,)
 
 
 def register():
@@ -224,7 +221,6 @@ def register():
     )
 
     bpy.app.handlers.load_post.append(vr_ensure_default_landmark)
-    bpy.types.PoseBone.vr_mocap = bpy.props.PointerProperty(type=VRMocapProps)
 
 
 def unregister():
@@ -234,6 +230,5 @@ def unregister():
     del bpy.types.Scene.vr_landmarks
     del bpy.types.Scene.vr_landmarks_selected
     del bpy.types.Scene.vr_landmarks_active
-    del bpy.types.PoseBone.vr_mocap
 
     bpy.app.handlers.load_post.remove(vr_ensure_default_landmark)
