@@ -16,6 +16,7 @@ from bpy.types import (
     Operator,
 )
 import math
+import mathutils
 from math import radians
 from mathutils import Euler, Matrix, Quaternion, Vector
 from .custom_properties import custom_float_create
@@ -62,8 +63,20 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
         armature = context.scene.obj_selection
         bones = armature.pose.bones
         target_bone = bones[bone_name]
-        # TODO Verify this works on all bone rolls, see if there is a better way
-        target_bone.matrix = self._get_controller_pose_matrix(context, idx, wm)
+        # TODO Make this better
+        offset = (
+            context.scene.vr_offset_left if idx == 0 else context.scene.vr_offset_right
+        )
+        # quat_matrix = mathutils.Quaternion(offset).to_matrix().to_4x4()
+        target_bone.matrix = self._get_controller_pose_matrix(
+            context, idx, wm
+        ) @ target_bone.matrix.Rotation(offset.x, 4, "X")
+        target_bone.matrix = self._get_controller_pose_matrix(
+            context, idx, wm
+        ) @ target_bone.matrix.Rotation(offset.y, 4, "Y")
+        target_bone.matrix = self._get_controller_pose_matrix(
+            context, idx, wm
+        ) @ target_bone.matrix.Rotation(offset.z, 4, "X")
         target_bone.keyframe_insert('location')
         target_bone.keyframe_insert('rotation_euler')
 

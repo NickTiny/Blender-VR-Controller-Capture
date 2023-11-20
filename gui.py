@@ -235,6 +235,7 @@ class VRMOCAP_PT_vr_save_position(bpy.types.Panel):
                 context.scene.left_bone_selection
             ]
             self.draw_controller_properties(context, col, target)
+            col.prop(context.scene, "vr_offset_right")
 
         if scene.vr_target_left:
             col = split.column()
@@ -242,6 +243,7 @@ class VRMOCAP_PT_vr_save_position(bpy.types.Panel):
                 context.scene.right_bone_selection
             ]
             self.draw_controller_properties(context, col, target)
+            col.prop(context.scene, "vr_offset_left")
 
 
 ### Info.

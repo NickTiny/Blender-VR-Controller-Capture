@@ -192,16 +192,6 @@ class VRLandmark(PropertyGroup):
         return None if (len(landmarks) < 1) else landmarks[scene.vr_landmarks_active]
 
 
-class VRMocapProps(PropertyGroup):
-    # TODO This doesn't allow for drivers
-    # VERIFY IF DRIVERS CAN BE ADDED, OTHERWISE SWITCH TO CUSTOM PROPS Tiny Style
-    fly_forward: bpy.props.FloatProperty(name="Thumb Up")
-    fly_left: bpy.props.FloatProperty(name="Thumb Left")
-    nav_reset: bpy.props.FloatProperty(name="x_button")
-    nav_grab: bpy.props.FloatProperty(name="Inner Trigger")
-    teleport: bpy.props.FloatProperty(name="Outer Trigger")
-
-
 classes = (VRLandmark,)
 
 
@@ -220,6 +210,13 @@ def register():
         update=vr_landmark_active_update,
     )
 
+    bpy.types.Scene.vr_offset_right = bpy.props.FloatVectorProperty(
+        name="Rotation Offset", subtype="EULER", size=3, default=(-1.5708, 0, -1.5708)
+    )
+    bpy.types.Scene.vr_offset_left = bpy.props.FloatVectorProperty(
+        name="Rotation Offset", subtype="EULER", size=3, default=(-1.5708, 0, -1.5708)
+    )
+
     bpy.app.handlers.load_post.append(vr_ensure_default_landmark)
 
 
@@ -230,5 +227,7 @@ def unregister():
     del bpy.types.Scene.vr_landmarks
     del bpy.types.Scene.vr_landmarks_selected
     del bpy.types.Scene.vr_landmarks_active
+    del bpy.types.Scene.vr_offset_right
+    del bpy.types.Scene.vr_offset_left
 
     bpy.app.handlers.load_post.remove(vr_ensure_default_landmark)
