@@ -1,0 +1,10 @@
+# Code Clean-up
+- [ ] Remove Duplicate Code from  mocap_actionmaps.py
+
+# Bugs
+- [ ] Fix Rotation not being keyframe correctly during mocap
+
+# Features
+- [ ] Add Location Scale 
+- [ ] Add Error Messages to Polls
+- [ ] Add Descriptions to Operators
