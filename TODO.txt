@@ -3,6 +3,8 @@
 
 # Bugs
 - [ ] Fix Rotation not being keyframe correctly during mocap
+- [ ] Allow user to enable add-on without viewport_vr_preview enabled
+- [ ] Check if add-on is enabled and provide feedback to user
 
 # Features
 - [ ] Add Location Scale 
