@@ -3,9 +3,9 @@
 if "bpy" in locals():
     import importlib
 
-    importlib.reload(action_map)
-else:
-    from . import action_map
+from viewport_vr_preview import action_map
+from viewport_vr_preview.defaults import vr_defaults_create_default
+
 
 import bpy
 from bpy.app.handlers import persistent
@@ -171,7 +171,7 @@ def vr_defaults_haptic_actionbinding_add(ami, name, profile, component_paths):
     return amb
 
 
-def vr_defaults_create_default(session_state):
+def vr_defaults_clear_default(session_state):
     am = vr_defaults_actionmap_add(session_state, VRDefaultActionmaps.DEFAULT.value)
     if not am:
         return
@@ -1384,354 +1384,31 @@ def vr_defaults_create_default(session_state):
         )
 
 
-def vr_defaults_create_default_gamepad(session_state):
-    am = vr_defaults_actionmap_add(session_state, VRDefaultActionmaps.GAMEPAD.value)
-
-    ami = vr_defaults_action_add(
-        am,
-        VRDefaultActions.TELEPORT.value,
-        ["/user/gamepad"],
-        "",
-        'MODAL',
-        False,
-        "",
-        False,
-        0.0,
-        0.0,
-        0.0,
-        'PRESS',
-    )
-    if ami:
-        vr_defaults_actionbinding_add(
-            ami,
-            VRDefaultActionbindings.GAMEPAD.value,
-            VRDefaultActionprofiles.GAMEPAD.value,
-            ["/input/trigger_right/value"],
-            0.3,
-            'ANY',
-            'ANY',
-        )
-
-    ami = vr_defaults_action_add(
-        am,
-        VRDefaultActions.FLY.value,
-        ["/user/gamepad"],
-        "",
-        'MODAL',
-        False,
-        "",
-        False,
-        0.0,
-        0.0,
-        0.0,
-        'PRESS',
-    )
-    if ami:
-        vr_defaults_actionbinding_add(
-            ami,
-            VRDefaultActionbindings.GAMEPAD.value,
-            VRDefaultActionprofiles.GAMEPAD.value,
-            ["/input/trigger_left/value"],
-            0.3,
-            'ANY',
-            'ANY',
-        )
-
-    ami = vr_defaults_action_add(
-        am,
-        VRDefaultActions.FLY_FORWARD.value,
-        ["/user/gamepad"],
-        "",
-        'MODAL',
-        False,
-        "",
-        False,
-        0.0,
-        0.0,
-        0.0,
-        'PRESS',
-    )
-    if ami:
-        vr_defaults_actionbinding_add(
-            ami,
-            VRDefaultActionbindings.GAMEPAD.value,
-            VRDefaultActionprofiles.GAMEPAD.value,
-            ["/input/thumbstick_left/y"],
-            0.3,
-            'POSITIVE',
-            'ANY',
-        )
-
-    ami = vr_defaults_action_add(
-        am,
-        VRDefaultActions.FLY_BACK.value,
-        ["/user/gamepad"],
-        "",
-        'MODAL',
-        False,
-        "",
-        False,
-        0.0,
-        0.0,
-        0.0,
-        'PRESS',
-    )
-    if ami:
-        vr_defaults_actionbinding_add(
-            ami,
-            VRDefaultActionbindings.GAMEPAD.value,
-            VRDefaultActionprofiles.GAMEPAD.value,
-            ["/input/thumbstick_left/y"],
-            0.3,
-            'NEGATIVE',
-            'ANY',
-        )
-
-    ami = vr_defaults_action_add(
-        am,
-        VRDefaultActions.FLY_LEFT.value,
-        ["/user/gamepad"],
-        "",
-        'MODAL',
-        False,
-        "",
-        False,
-        0.0,
-        0.0,
-        0.0,
-        'PRESS',
-    )
-    if ami:
-        vr_defaults_actionbinding_add(
-            ami,
-            VRDefaultActionbindings.GAMEPAD.value,
-            VRDefaultActionprofiles.GAMEPAD.value,
-            ["/input/thumbstick_left/x"],
-            0.3,
-            'NEGATIVE',
-            'ANY',
-        )
-
-    ami = vr_defaults_action_add(
-        am,
-        VRDefaultActions.FLY_RIGHT.value,
-        ["/user/gamepad"],
-        "",
-        'MODAL',
-        False,
-        "",
-        False,
-        0.0,
-        0.0,
-        0.0,
-        'PRESS',
-    )
-    if ami:
-        vr_defaults_actionbinding_add(
-            ami,
-            VRDefaultActionbindings.GAMEPAD.value,
-            VRDefaultActionprofiles.GAMEPAD.value,
-            ["/input/thumbstick_left/x"],
-            0.3,
-            'POSITIVE',
-            'ANY',
-        )
-
-    ami = vr_defaults_action_add(
-        am,
-        VRDefaultActions.FLY_UP.value,
-        ["/user/gamepad"],
-        "",
-        'MODAL',
-        False,
-        "",
-        False,
-        0.0,
-        0.0,
-        0.0,
-        'PRESS',
-    )
-    if ami:
-        vr_defaults_actionbinding_add(
-            ami,
-            VRDefaultActionbindings.GAMEPAD.value,
-            VRDefaultActionprofiles.GAMEPAD.value,
-            ["/input/thumbstick_right/y"],
-            0.3,
-            'POSITIVE',
-            'ANY',
-        )
-
-    ami = vr_defaults_action_add(
-        am,
-        VRDefaultActions.FLY_DOWN.value,
-        ["/user/gamepad"],
-        "",
-        'MODAL',
-        False,
-        "",
-        False,
-        0.0,
-        0.0,
-        0.0,
-        'PRESS',
-    )
-    if ami:
-        vr_defaults_actionbinding_add(
-            ami,
-            VRDefaultActionbindings.GAMEPAD.value,
-            VRDefaultActionprofiles.GAMEPAD.value,
-            ["/input/thumbstick_right/y"],
-            0.3,
-            'NEGATIVE',
-            'ANY',
-        )
-
-    ami = vr_defaults_action_add(
-        am,
-        VRDefaultActions.FLY_TURNLEFT.value,
-        ["/user/gamepad"],
-        "",
-        'MODAL',
-        False,
-        "",
-        False,
-        0.0,
-        0.0,
-        0.0,
-        'PRESS',
-    )
-    if ami:
-        vr_defaults_actionbinding_add(
-            ami,
-            VRDefaultActionbindings.GAMEPAD.value,
-            VRDefaultActionprofiles.GAMEPAD.value,
-            ["/input/thumbstick_right/x"],
-            0.3,
-            'NEGATIVE',
-            'ANY',
-        )
-
-    ami = vr_defaults_action_add(
-        am,
-        VRDefaultActions.FLY_TURNRIGHT.value,
-        ["/user/gamepad"],
-        "",
-        'MODAL',
-        False,
-        "",
-        False,
-        0.0,
-        0.0,
-        0.0,
-        'PRESS',
-    )
-    if ami:
-        vr_defaults_actionbinding_add(
-            ami,
-            VRDefaultActionbindings.GAMEPAD.value,
-            VRDefaultActionprofiles.GAMEPAD.value,
-            ["/input/thumbstick_right/x"],
-            0.3,
-            'POSITIVE',
-            'ANY',
-        )
-
-    ami = vr_defaults_action_add(
-        am,
-        VRDefaultActions.NAV_RESET.value,
-        ["/user/gamepad"],
-        "",
-        'PRESS',
-        False,
-        "haptic_right",
-        True,
-        0.3,
-        3000.0,
-        0.5,
-        'PRESS',
-    )
-    if ami:
-        vr_defaults_actionbinding_add(
-            ami,
-            VRDefaultActionbindings.GAMEPAD.value,
-            VRDefaultActionprofiles.GAMEPAD.value,
-            ["/input/a/click"],
-            0.3,
-            'ANY',
-            'ANY',
-        )
-
-    ami = vr_defaults_haptic_action_add(
-        am, VRDefaultActions.HAPTIC_LEFT.value, ["/user/gamepad"]
-    )
-    if ami:
-        vr_defaults_haptic_actionbinding_add(
-            ami,
-            VRDefaultActionbindings.GAMEPAD.value,
-            VRDefaultActionprofiles.GAMEPAD.value,
-            ["/output/haptic_left"],
-        )
-
-    ami = vr_defaults_haptic_action_add(
-        am, VRDefaultActions.HAPTIC_RIGHT.value, ["/user/gamepad"]
-    )
-    if ami:
-        vr_defaults_haptic_actionbinding_add(
-            ami,
-            VRDefaultActionbindings.GAMEPAD.value,
-            VRDefaultActionprofiles.GAMEPAD.value,
-            ["/output/haptic_right"],
-        )
-
-    ami = vr_defaults_haptic_action_add(
-        am, VRDefaultActions.HAPTIC_LEFTTRIGGER.value, ["/user/gamepad"]
-    )
-    if ami:
-        vr_defaults_haptic_actionbinding_add(
-            ami,
-            VRDefaultActionbindings.GAMEPAD.value,
-            VRDefaultActionprofiles.GAMEPAD.value,
-            ["/output/haptic_left_trigger"],
-        )
-
-    ami = vr_defaults_haptic_action_add(
-        am, VRDefaultActions.HAPTIC_RIGHTTRIGGER.value, ["/user/gamepad"]
-    )
-    if ami:
-        vr_defaults_haptic_actionbinding_add(
-            ami,
-            VRDefaultActionbindings.GAMEPAD.value,
-            VRDefaultActionprofiles.GAMEPAD.value,
-            ["/output/haptic_right_trigger"],
-        )
-
-
 def vr_get_default_config_path():
-    filepath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs")
+    blender_version = str(bpy.app.version[0]) + '.' + str(bpy.app.version[1])
+    version_folder = os.path.join(os.path.dirname(bpy.app.binary_path), blender_version)
+    addons_dir = os.path.join(os.path.join(version_folder, 'scripts'), 'addons')
+    viewport_vir_dir = os.path.join(addons_dir, 'viewport_vr_preview')
+    filepath = os.path.join(viewport_vir_dir, "configs")
     return os.path.join(filepath, "default.py")
 
 
-def vr_ensure_default_actionmaps(session_state):
-    loaded = True
-
-    for name in VRDefaultActionmaps:
-        if not session_state.actionmaps.find(session_state, name.value):
-            loaded = False
-            break
-
-    if loaded:
-        return loaded
-
-    # Load default action maps.
+def vr_mocap_actionmaps_clear(session_state):
     filepath = vr_get_default_config_path()
 
-    if not os.path.exists(filepath):
-        # Create and save default action maps.
-        vr_defaults_create_default(session_state)
-        vr_defaults_create_default_gamepad(session_state)
+    vr_defaults_clear_default(session_state)
+    action_map.vr_save_actionmaps(session_state, filepath, sort=False)
 
-        action_map.vr_save_actionmaps(session_state, filepath, sort=False)
+    loaded = action_map.vr_load_actionmaps(session_state, filepath)
+
+    return loaded
+
+
+def vr_mocap_actionmaps_restore(session_state):
+    filepath = vr_get_default_config_path()
+
+    vr_defaults_create_default(session_state)
+    action_map.vr_save_actionmaps(session_state, filepath, sort=False)
 
     loaded = action_map.vr_load_actionmaps(session_state, filepath)
 
