@@ -2,7 +2,7 @@
 - [ ] Remove Duplicate Code from  mocap_actionmaps.py
 
 # Bugs
-- [ ] Fix Rotation not being keyframe correctly during mocap
+- [x] Fix Rotation not being keyframe correctly during mocap
 - [x] Allow user to enable add-on without viewport_vr_preview enabled
 - [ ] Check if add-on is enabled and provide feedback to user
 

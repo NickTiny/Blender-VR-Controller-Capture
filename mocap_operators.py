@@ -15,6 +15,7 @@ from math import radians
 from mathutils import Euler, Matrix, Quaternion, Vector
 from .custom_properties import custom_float_create
 from .mocap_actionmaps import vr_mocap_actionmaps_clear, vr_mocap_actionmaps_restore
+from . import constants
 
 
 class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
@@ -219,11 +220,25 @@ class VRMOCAP_OT_add_custom_properties(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class VRMOCAP_OT_set_rotation_mode(bpy.types.Operator):
+    bl_idname = "view3d.set_rotation_mode"
+    bl_label = "Set Rotation Mode"
+
+    bone_name: bpy.props.StringProperty(name="Bone Name")
+
+    def execute(self, context):
+        obj = context.scene.obj_selection
+        bone = obj.pose.bones[self.bone_name]
+        bone.rotation_mode = constants.BONE_ROTATION_MODE
+        return {'FINISHED'}
+
+
 classes = (
     VRMOCAP_OT_enable_mocap_controllers,
     VRMOCAP_OT_disable_mocap_controllers,
     VRMOCAP_OT_vr_save_position_start,
     VRMOCAP_OT_add_custom_properties,
+    VRMOCAP_OT_set_rotation_mode,
 )
 
 

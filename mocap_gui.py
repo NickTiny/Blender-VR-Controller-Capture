@@ -1,5 +1,7 @@
 import bpy
 
+from . import constants
+
 
 def armature_filter(self, object):
     return object.type == 'ARMATURE'
@@ -76,15 +78,28 @@ class VRMOCAP_PT_vr_save_position(bpy.types.Panel):
                 context.scene.left_bone_selection
             ]
             self.draw_controller_properties(context, col, target)
-            col.prop(context.scene, "vr_offset_right")
+            col.prop(context.scene, "vr_offset_left")
 
-        if scene.vr_target_left:
+            if target.rotation_mode != constants.BONE_ROTATION_MODE:
+                alert_col = col.column()
+                alert_col.alert = True
+                alert_col.operator(
+                    "view3d.set_rotation_mode"
+                ).bone_name = context.scene.left_bone_selection
+
+        if scene.vr_target_right:
             col = split.column()
             target = context.scene.obj_selection.pose.bones[
                 context.scene.right_bone_selection
             ]
             self.draw_controller_properties(context, col, target)
-            col.prop(context.scene, "vr_offset_left")
+            col.prop(context.scene, "vr_offset_right")
+            if target.rotation_mode != constants.BONE_ROTATION_MODE:
+                alert_col = col.column()
+                alert_col.alert = True
+                alert_col.operator(
+                    "view3d.set_rotation_mode"
+                ).bone_name = context.scene.right_bone_selection
 
 
 classes = (VRMOCAP_PT_vr_save_position,)
