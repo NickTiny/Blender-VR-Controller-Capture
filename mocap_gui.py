@@ -1,4 +1,5 @@
 import bpy
+import addon_utils
 
 from . import constants
 
@@ -37,6 +38,12 @@ class VRMOCAP_PT_vr_save_position(bpy.types.Panel):
         layout = self.layout
         scene = context.scene
         enabled = scene.vr_motion_capture
+
+        if addon_utils.check("viewport_vr_preview") == (False, False):
+            layout.alert = True
+            layout.label(text="Enable 'VR Scene Inspection' addon", icon="ERROR")
+            return
+
         box = layout.box()
         box.label(text="VR Controller Motion Capture")
         row = box.row(align=True)
