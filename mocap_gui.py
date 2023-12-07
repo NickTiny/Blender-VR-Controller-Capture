@@ -79,7 +79,7 @@ class VRMOCAP_PT_vr_save_position(bpy.types.Panel):
         )
         row = cont_sets.row()
         split = row.split(factor=0.5)
-        if scene.vr_target_left:
+        if scene.left_bone_selection:
             col = split.column()
             target = context.scene.obj_selection.pose.bones[
                 context.scene.left_bone_selection
@@ -94,7 +94,7 @@ class VRMOCAP_PT_vr_save_position(bpy.types.Panel):
                     "view3d.set_rotation_mode"
                 ).bone_name = context.scene.left_bone_selection
 
-        if scene.vr_target_right:
+        if  scene.right_bone_selection:
             col = split.column()
             target = context.scene.obj_selection.pose.bones[
                 context.scene.right_bone_selection

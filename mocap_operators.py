@@ -130,17 +130,11 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
         if context.scene.vr_motion_capture == True:
             self.report({'ERROR'}, "VR Mocap Session Already in Progress")
             return {'CANCELLED'}
-        if (
-            context.scene.vr_target_left is None
-            or context.scene.vr_target_right is None
-        ):
-            self.report({'ERROR'}, "No object is set")
-            return {'CANCELLED'}
+        # TODO Check if properties are ready for capture
         context.scene.vr_motion_capture = True
-        self._left_target = context.scene.vr_target_left
-        self._right_target = context.scene.vr_target_right
-        self.create_new_action(self._left_target)
-        self.create_new_action(self._right_target)
+        self._left_target = context.scene.obj_selection.pose.bones[context.scene.left_bone_selection]
+        self._right_target = context.scene.obj_selection.pose.bones[context.scene.right_bone_selection]
+        self.create_new_action(context.scene.obj_selection)
         self._left_target
         self._wm = context.window_manager
         self._wm.modal_handler_add(self)
@@ -158,6 +152,7 @@ class VRMOCAP_OT_enable_mocap_controllers(bpy.types.Operator):
             return True
 
     def execute(self, context):
+        wait_time = 0
         bpy.ops.wm.xr_session_toggle()
         while context.window_manager.xr_session_state is None:
             wait_time += 1
