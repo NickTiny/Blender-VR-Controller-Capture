@@ -59,15 +59,9 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
             context.scene.vr_offset_left if idx == 0 else context.scene.vr_offset_right
         )
         # quat_matrix = mathutils.Quaternion(offset).to_matrix().to_4x4()
-        target_bone.matrix = self._get_controller_pose_matrix(
-            context, idx, wm
-        ) @ target_bone.matrix.Rotation(offset.x, 4, "X")
-        target_bone.matrix = self._get_controller_pose_matrix(
-            context, idx, wm
-        ) @ target_bone.matrix.Rotation(offset.y, 4, "Y")
-        target_bone.matrix = self._get_controller_pose_matrix(
-            context, idx, wm
-        ) @ target_bone.matrix.Rotation(offset.z, 4, "X")
+        matrix_x = self._get_controller_pose_matrix(context, idx, wm) @ target_bone.matrix.Rotation(offset.x, 4, "X")
+        matrix_x_y = matrix_x @ target_bone.matrix.Rotation(offset.y, 4, "Y")
+        target_bone.matrix = matrix_x_y @ target_bone.matrix.Rotation(offset.z, 4, "Z")
         target_bone.keyframe_insert('location')
         target_bone.keyframe_insert('rotation_euler')
 
@@ -103,7 +97,7 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
         context.scene.vr_motion_capture = False
 
     def modal(self, context, event):
-        if event.type in {'LEFTMOUSE', 'RIGHTMOUSE', 'ESC'}:
+        if event.type in {'ESC'}:
             self.cancel(context)
             return {'FINISHED'}
 
