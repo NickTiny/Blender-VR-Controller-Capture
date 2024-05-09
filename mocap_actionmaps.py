@@ -1399,7 +1399,7 @@ def vr_mocap_actionmaps_clear(session_state):
     vr_defaults_clear_default(session_state)
     action_map.vr_save_actionmaps(session_state, filepath, sort=False)
 
-    loaded = action_map.vr_load_actionmaps(session_state, filepath)
+    loaded = action_map.vr_load_actionmaps(session_state, filepath) # BUG this sometimes returns with user permission error, debug why
 
     return loaded
 

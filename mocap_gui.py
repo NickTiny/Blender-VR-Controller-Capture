@@ -13,17 +13,15 @@ class VRMOCAP_PT_vr_save_position(bpy.types.Panel):
     bl_label = "VR Capture"
 
 
-    def draw_controller_properties(self, context, col, target):
+    def draw_controller_properties(self, context, col, target, props):
         try:
-            target["fly_forward"]
+            target[props[0]]
         except KeyError:
-            col.operator("view3d.add_custom_properties")
-        # if not target.fly_forward:
-        col.prop(target, '["fly_forward"]')
-        col.prop(target, '["fly_left"]')
-        col.prop(target, '["nav_reset"]')
-        col.prop(target, '["nav_grab"]')
-        col.prop(target, '["teleport"]')
+            col.alert = True
+            col.label(text="Re-Select Bone", icon="ERROR")
+        for prop_name in props:
+            col.prop(target, f'["{prop_name}"]')
+
 
     def draw(self, context):
         layout = self.layout
@@ -36,8 +34,6 @@ class VRMOCAP_PT_vr_save_position(bpy.types.Panel):
             layout.label(text="Enable 'VR Scene Inspection' addon", icon="ERROR")
             return
 
-        box = layout.box()
-        box.label(text="VR Controller Motion Capture")
         is_session_running = bpy.types.XrSessionState.is_running(context)
         toggle_session_info = (
             (iface_("Start VR MoCap Session"), 'PLAY')
@@ -80,45 +76,30 @@ class VRMOCAP_PT_vr_save_position(bpy.types.Panel):
             "left_bone_name",
             vr_mocap.capture_obj.pose,
             "bones",
-            text="Bone",
+            text="Left",
         )
         row.prop_search(
             vr_mocap,
             "right_bone_name",
             vr_mocap.capture_obj.pose,
             "bones",
-            text="Bone",
+            text="Right",
         )
         row = cont_sets.row()
         split = row.split(factor=0.5)
-        if vr_mocap.left_bone_name:
-            col = split.column()
-            target = vr_mocap.capture_obj.pose.bones[
-                vr_mocap.left_bone_name
-            ]
-            self.draw_controller_properties(context, col, target)
-            col.prop(vr_mocap, "vr_offset_left")
+        left_target = vr_mocap.capture_obj.pose.bones.get(vr_mocap.left_bone_name)
+        left_col = split.column()
+        right_col = split.column()
+        if left_target:
+            self.draw_controller_properties(context, layout, left_target, constants.LEFT_ONLY_BUTTON_PROPS)
+            self.draw_controller_properties(context, left_col, left_target, constants.COMMON_CONTROLLER_BUTTON_PROPS)
+            left_col.prop(vr_mocap, "vr_offset_left")
 
-            if target.rotation_mode != constants.BONE_ROTATION_MODE:
-                alert_col = col.column()
-                alert_col.alert = True
-                alert_col.operator("view3d.set_rotation_mode").bone_name = (
-                    vr_mocap.left_bone_name
-                )
+        right_target = vr_mocap.capture_obj.pose.bones.get(vr_mocap.right_bone_name)
+        if right_target:
+            self.draw_controller_properties(context, right_col, right_target,  constants.COMMON_CONTROLLER_BUTTON_PROPS)
+            right_col.prop(vr_mocap, "vr_offset_right")
 
-        if vr_mocap.right_bone_name:
-            col = split.column()
-            target = vr_mocap.capture_obj.pose.bones[
-                vr_mocap.right_bone_name
-            ]
-            self.draw_controller_properties(context, col, target)
-            col.prop(vr_mocap, "vr_offset_right")
-            if target.rotation_mode != constants.BONE_ROTATION_MODE:
-                alert_col = col.column()
-                alert_col.alert = True
-                alert_col.operator("view3d.set_rotation_mode").bone_name = (
-                    vr_mocap.right_bone_name
-                )
 
 
 classes = (VRMOCAP_PT_vr_save_position,)

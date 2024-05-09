@@ -2,18 +2,7 @@
 
 import bpy
 import time
-import gpu
-from bpy.app.translations import pgettext_data as data_
-from bpy.types import (
-    Gizmo,
-    GizmoGroup,
-    Operator,
-)
-import math
-import mathutils
-from math import radians
-from mathutils import Euler, Matrix, Quaternion, Vector
-from .props import custom_float_create
+from mathutils import  Matrix, Quaternion, Vector
 from .mocap_actionmaps import vr_mocap_actionmaps_clear, vr_mocap_actionmaps_restore
 from . import constants
 import addon_utils
@@ -46,8 +35,14 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        view3d = context.space_data
-        return context.window_manager.xr_session_state != None
+        vr_mocap = context.scene.vr_mocap
+        if not context.window_manager.xr_session_state:
+            cls.poll_message_set("Please Start VR MoCap Session First")
+        if not vr_mocap.controller_override:
+            cls.poll_message_set("Please Restart VR MoCap Session, controller override faild to activate")
+        if vr_mocap.left_bone_name == vr_mocap.right_bone_name:
+            cls.poll_message_set("Cannot target the same bone with both controllers")
+        return True
 
     @staticmethod
     def _get_controller_pose_matrix(context, idx, wm):
@@ -102,13 +97,14 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
         bones = armature.pose.bones
         bone_name = self.get_bone_via_hand(context, hand)
         target = bones[bone_name]
-        target[f'{key}'] = session_state.action_state_get(
+        prop_name = constants.CONTROLLER_BUTTONS[constants.ALL_CONTROLLER_ACTIONS.index(key)][1]
+        target[f'{prop_name}'] = session_state.action_state_get(
             context=context,
             action_set_name=session_state.actionmaps[0].name,
             action_name=f"{key}",
             user_path=f'/user/hand/{hand}',
         )[0]
-        armature.keyframe_insert(data_path=f'pose.bones["{bone_name}"]["{key}"]')
+        armature.keyframe_insert(data_path=f'pose.bones["{bone_name}"]["{prop_name}"]')
 
     def cancel(self, context):
         bpy.ops.screen.animation_cancel()
@@ -126,16 +122,11 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
         self.keyframe_grip(context, 0, self._wm)  # TODO make one function call
         self.keyframe_grip(context, 1, self._wm)
         session_state = context.window_manager.xr_session_state
-        self.save_controller_data(context, session_state, 'left', 'fly_forward')
-        self.save_controller_data(context, session_state, 'left', 'fly_left')
-        self.save_controller_data(context, session_state, 'left', 'nav_grab')
-        self.save_controller_data(context, session_state, 'left', 'teleport')
-        self.save_controller_data(context, session_state, 'left', 'nav_reset')
-        self.save_controller_data(context, session_state, 'right', 'fly_forward')
-        self.save_controller_data(context, session_state, 'right', 'fly_left')
-        self.save_controller_data(context, session_state, 'right', 'nav_grab')
-        self.save_controller_data(context, session_state, 'right', 'teleport')
-        self.save_controller_data(context, session_state, 'right', 'nav_reset')
+        for action_name in constants.LEFT_ONLY_CONTROLLER_ACTIONS:
+            self.save_controller_data(context, session_state, 'right', action_name)
+        for action_name in constants.ALL_CONTROLLER_ACTIONS:
+            self.save_controller_data(context, session_state, 'left', action_name)
+
         return {'PASS_THROUGH'}
 
     def execute(self, context):
@@ -168,7 +159,16 @@ class VRMOCAP_OT_start_mocap_session(bpy.types.Operator):
         "This will disable all controller inputs, controller inputs will instead be captured "
         "Always Enable/Disable your MoCap session with this operator only"
     )
-    # TODO add check if recording is active don't stop session
+
+    @classmethod
+    def poll(cls, context):
+        vr_mocap = context.scene.vr_mocap
+        if context.window_manager.xr_session_state:
+            cls.poll_message_set("Close the existing VR Sessions before starting MoCap")
+        if vr_mocap.recording_active:
+            cls.poll_message_set("Cannot stop VR Session while recording is active")
+        return True
+    
     def safely_toggle_vr_session(self, context):
         bpy.ops.wm.xr_session_toggle()
         wait_time = 0
@@ -198,43 +198,11 @@ class VRMOCAP_OT_start_mocap_session(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class VRMOCAP_OT_add_custom_properties(bpy.types.Operator):
-    bl_idname = "view3d.add_custom_properties"
-    bl_label = "Add Custom Properties"
-
-    def execute(self, context):
-        vr_mocap = context.scene.vr_mocap
-        armature = vr_mocap.capture_obj
-        left_target = armature.pose.bones[vr_mocap.left_bone_name]
-        right_target = armature.pose.bones[vr_mocap.right_bone_name]
-        names = ["fly_forward", "fly_left", "nav_reset", "nav_grab", "teleport"]
-        for target in [left_target, right_target]:
-            for name in names:
-                custom_float_create(
-                    target=target, value=0.0, name=name, min=-9999.9, max=9999.9
-                )
-        return {'FINISHED'}
-
-
-class VRMOCAP_OT_set_rotation_mode(bpy.types.Operator):
-    bl_idname = "view3d.set_rotation_mode"
-    bl_label = "Set Rotation Mode"
-
-    bone_name: bpy.props.StringProperty(name="Bone Name")
-
-    def execute(self, context):
-        obj = context.scene.vr_mocap.capture_obj
-        bone = obj.pose.bones[self.bone_name]
-        bone.rotation_mode = constants.BONE_ROTATION_MODE
-        return {'FINISHED'}
-
 
 classes = (
     VRMPCAP_OT_enabled_vr_preview_addon,
     VRMOCAP_OT_start_mocap_session,
     VRMOCAP_OT_vr_save_position_start,
-    VRMOCAP_OT_add_custom_properties,
-    VRMOCAP_OT_set_rotation_mode,
 )
 
 
