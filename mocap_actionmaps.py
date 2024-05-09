@@ -1393,23 +1393,23 @@ def vr_get_default_config_path():
     return os.path.join(filepath, "default.py")
 
 
-def vr_mocap_actionmaps_clear(session_state):
+def vr_mocap_actionmaps_clear(context, session_state):
     filepath = vr_get_default_config_path()
 
     vr_defaults_clear_default(session_state)
     action_map.vr_save_actionmaps(session_state, filepath, sort=False)
 
     loaded = action_map.vr_load_actionmaps(session_state, filepath) # BUG this sometimes returns with user permission error, debug why
-
+    action_map.vr_actionset_active_update(context)
     return loaded
 
 
-def vr_mocap_actionmaps_restore(session_state):
+def vr_mocap_actionmaps_restore(context, session_state):
     filepath = vr_get_default_config_path()
 
     vr_defaults_create_default(session_state)
     action_map.vr_save_actionmaps(session_state, filepath, sort=False)
 
     loaded = action_map.vr_load_actionmaps(session_state, filepath)
-
+    action_map.vr_actionset_active_update(context)
     return loaded

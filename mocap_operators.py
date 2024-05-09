@@ -187,13 +187,13 @@ class VRMOCAP_OT_start_mocap_session(bpy.types.Operator):
         if context.window_manager.xr_session_state:
             # Disable VR Mocap Action Maps if session is already active
             context.scene.vr_actions_enable = True
-            vr_mocap_actionmaps_restore(context.window_manager.xr_session_state)
+            vr_mocap_actionmaps_restore(context, context.window_manager.xr_session_state)
             context.scene.vr_mocap.controller_override = False
             self.safely_toggle_vr_session(context)
         else:
             # Enable VR Mocap Action Maps if session is already inactive
             self.safely_toggle_vr_session(context)
-            vr_mocap_actionmaps_clear(context.window_manager.xr_session_state)
+            vr_mocap_actionmaps_clear(context, context.window_manager.xr_session_state)
             context.scene.vr_mocap.controller_override = True
         return {'FINISHED'}
 
