@@ -2,6 +2,7 @@ import bpy
 import addon_utils
 
 from . import constants
+from bpy.app.translations import pgettext_iface as iface_
 
 
 def armature_filter(self, object):
@@ -47,10 +48,30 @@ class VRMOCAP_PT_vr_save_position(bpy.types.Panel):
 
         box = layout.box()
         box.label(text="VR Controller Motion Capture")
-        row = box.row(align=True)
-        row.operator("view3d.disable_mocap_controllers", text="Disable")
-        row.operator("view3d.enable_mocap_controllers", text="Enable")
-        layout.operator("view3d.vr_save_pose", depress=enabled)
+        is_session_running = bpy.types.XrSessionState.is_running(context)
+        toggle_session_info = (
+            (iface_("Start VR MoCap Session"), 'PLAY')
+            if not is_session_running
+            else (iface_("Stop VR MoCap Session"), 'SNAP_FACE')
+        )
+
+        layout.operator(
+            "view3d.start_mocap_session",
+            text=toggle_session_info[0],
+            translate=False,
+            icon=toggle_session_info[1],
+        )
+
+        toggle_rec_info = (
+            "Start Recording" if not context.scene.vr_motion_capture else "Recording..."
+        )
+        layout.operator(
+            "view3d.vr_save_pose",
+            text=toggle_rec_info,
+            translate=False,
+            icon="RADIOBUT_ON",
+            depress=enabled,
+        )
         cont_sets = layout.column()
         cont_sets.enabled = context.scene.vr_mocap_controllers
         row = cont_sets.row()
@@ -59,7 +80,7 @@ class VRMOCAP_PT_vr_save_position(bpy.types.Panel):
             "obj_selection",
             context.scene,
             "objects",
-            text="Object",
+            text="Armature",
         )
         if context.scene.obj_selection is None:
             return
@@ -91,11 +112,11 @@ class VRMOCAP_PT_vr_save_position(bpy.types.Panel):
             if target.rotation_mode != constants.BONE_ROTATION_MODE:
                 alert_col = col.column()
                 alert_col.alert = True
-                alert_col.operator(
-                    "view3d.set_rotation_mode"
-                ).bone_name = context.scene.left_bone_selection
+                alert_col.operator("view3d.set_rotation_mode").bone_name = (
+                    context.scene.left_bone_selection
+                )
 
-        if  scene.right_bone_selection:
+        if scene.right_bone_selection:
             col = split.column()
             target = context.scene.obj_selection.pose.bones[
                 context.scene.right_bone_selection
@@ -105,9 +126,9 @@ class VRMOCAP_PT_vr_save_position(bpy.types.Panel):
             if target.rotation_mode != constants.BONE_ROTATION_MODE:
                 alert_col = col.column()
                 alert_col.alert = True
-                alert_col.operator(
-                    "view3d.set_rotation_mode"
-                ).bone_name = context.scene.right_bone_selection
+                alert_col.operator("view3d.set_rotation_mode").bone_name = (
+                    context.scene.right_bone_selection
+                )
 
 
 classes = (VRMOCAP_PT_vr_save_position,)

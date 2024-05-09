@@ -22,6 +22,7 @@ import addon_utils
 class VRMPCAP_OT_enabled_vr_preview_addon(bpy.types.Operator):
     bl_idname = "view3d.enabled_vr_preview_addon"
     bl_label = "Enable 'VR Scene Inspection Add-On'"
+    bl_description = "Ensure VR Scene Inspection Add-On is enabled"
 
     def execute(self, context):
         addon_utils.enable("viewport_vr_preview")
@@ -30,7 +31,13 @@ class VRMPCAP_OT_enabled_vr_preview_addon(bpy.types.Operator):
 
 class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
     bl_idname = "view3d.vr_save_pose"
-    bl_label = "Start Saving VR Poses"
+    bl_label = "Start Recording VR MoCap Session"
+    bl_description = (
+        "Begins playback in the current scene, while capturing all inputs "
+        "from VR Controllers onto the target armature's bones. All button "
+        "presses are saved as custom properties, location and scale in Saved to the "
+        "bone's transforms. To end recording hit used `ESC` key"
+    )
 
     _left_target = None
     _right_target = None
@@ -152,44 +159,16 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
         return {'RUNNING_MODAL'}
 
 
-class VRMOCAP_OT_enable_mocap_controllers(bpy.types.Operator):
-    bl_idname = "view3d.enable_mocap_controllers"
-    bl_label = "Enable Mocap on Controllers"
+class VRMOCAP_OT_start_mocap_session(bpy.types.Operator):
+    bl_idname = "view3d.start_mocap_session"
+    bl_label = "Start VR MoCap Session"
+    bl_description = (
+        "Start VR Session with Motion Capture mode enabled. "
+        "This will disable all controller inputs, controller inputs will instead be captured "
+        "Always Enable/Disable your MoCap session with this operator only"
+    )
 
-    @classmethod
-    def poll(cls, context):
-        if not context.scene.vr_mocap_controllers:
-            return True
-
-    def execute(self, context):
-        wait_time = 0
-        bpy.ops.wm.xr_session_toggle()
-        while context.window_manager.xr_session_state is None:
-            wait_time += 1
-            time.sleep(1)
-            if wait_time == 5:
-                self.report(
-                    {'ERROR'},
-                    "Failed to get device information. Is a device plugged in?",
-                )
-                return {'CANCELLED'}
-            print("waiting for vr session")
-        vr_mocap_actionmaps_clear(context.window_manager.xr_session_state)
-        context.scene.vr_mocap_controllers = True
-        bpy.ops.wm.xr_session_toggle()
-        return {'FINISHED'}
-
-
-class VRMOCAP_OT_disable_mocap_controllers(bpy.types.Operator):
-    bl_idname = "view3d.disable_mocap_controllers"
-    bl_label = "Disable Mocap Controllers"
-
-    @classmethod
-    def poll(cls, context):
-        if context.scene.vr_mocap_controllers:
-            return True
-
-    def execute(self, context):
+    def safely_toggle_vr_session(self, context):
         bpy.ops.wm.xr_session_toggle()
         wait_time = 0
         while context.window_manager.xr_session_state is None:
@@ -202,9 +181,19 @@ class VRMOCAP_OT_disable_mocap_controllers(bpy.types.Operator):
                 )
                 return {'CANCELLED'}
             print("waiting for vr session")
-        vr_mocap_actionmaps_restore(context.window_manager.xr_session_state)
-        context.scene.vr_mocap_controllers = False
-        bpy.ops.wm.xr_session_toggle()
+
+    def execute(self, context):
+        if context.window_manager.xr_session_state:
+            # Disable VR Mocap Action Maps if session is already active
+            context.scene.vr_actions_enable = True
+            vr_mocap_actionmaps_restore(context.window_manager.xr_session_state)
+            context.scene.vr_mocap_controllers = False
+            self.safely_toggle_vr_session(context)
+        else:
+            # Enable VR Mocap Action Maps if session is already inactive
+            self.safely_toggle_vr_session(context)
+            vr_mocap_actionmaps_clear(context.window_manager.xr_session_state)
+            context.scene.vr_mocap_controllers = True
         return {'FINISHED'}
 
 
@@ -239,9 +228,8 @@ class VRMOCAP_OT_set_rotation_mode(bpy.types.Operator):
 
 
 classes = (
-    VRMOCAP_OT_enable_mocap_controllers,
-    VRMOCAP_OT_disable_mocap_controllers,
     VRMPCAP_OT_enabled_vr_preview_addon,
+    VRMOCAP_OT_start_mocap_session,
     VRMOCAP_OT_vr_save_position_start,
     VRMOCAP_OT_add_custom_properties,
     VRMOCAP_OT_set_rotation_mode,
