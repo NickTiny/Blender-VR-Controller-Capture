@@ -5,8 +5,13 @@
 - [x] Fix Rotation not being keyframe correctly during mocap
 - [x] Allow user to enable add-on without viewport_vr_preview enabled
 - [x] Check if add-on is enabled and provide feedback to user
+- [ ] Fix bug when setting default action maps https://github.com/NickTiny/Blender-VR-Controller-Capture/issues/2
+- [ ] Check Default settings for rotation offset against default Armature
+
 
 # Features
 - [ ] Add Location Scale 
-- [ ] Add Error Messages to Polls
-- [ ] Add Descriptions to Operators
+- [ ] Add Operator to Create Default Armature
+- [ ] Consider adding Rotation Mode dropdown to change bone orientation
+- [x] Add Error Messages to Polls
+- [x] Add Descriptions to Operators
