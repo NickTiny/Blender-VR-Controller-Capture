@@ -25,6 +25,8 @@ else:
 import bpy
 
 from . import mocap_gui
+import addon_utils
+addon_utils.enable("viewport_vr_preview")
 
 
 def register():

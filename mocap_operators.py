@@ -16,6 +16,16 @@ from mathutils import Euler, Matrix, Quaternion, Vector
 from .custom_properties import custom_float_create
 from .mocap_actionmaps import vr_mocap_actionmaps_clear, vr_mocap_actionmaps_restore
 from . import constants
+import addon_utils
+
+
+class VRMPCAP_OT_enabled_vr_preview_addon(bpy.types.Operator):
+    bl_idname = "view3d.enabled_vr_preview_addon"
+    bl_label = "Enable 'VR Scene Inspection Add-On'"
+
+    def execute(self, context):
+        addon_utils.enable("viewport_vr_preview")
+        return {'FINISHED'}
 
 
 class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
@@ -59,7 +69,9 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
             context.scene.vr_offset_left if idx == 0 else context.scene.vr_offset_right
         )
         # quat_matrix = mathutils.Quaternion(offset).to_matrix().to_4x4()
-        matrix_x = self._get_controller_pose_matrix(context, idx, wm) @ target_bone.matrix.Rotation(offset.x, 4, "X")
+        matrix_x = self._get_controller_pose_matrix(
+            context, idx, wm
+        ) @ target_bone.matrix.Rotation(offset.x, 4, "X")
         matrix_x_y = matrix_x @ target_bone.matrix.Rotation(offset.y, 4, "Y")
         target_bone.matrix = matrix_x_y @ target_bone.matrix.Rotation(offset.z, 4, "Z")
         target_bone.keyframe_insert('location')
@@ -126,8 +138,12 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
             return {'CANCELLED'}
         # TODO Check if properties are ready for capture
         context.scene.vr_motion_capture = True
-        self._left_target = context.scene.obj_selection.pose.bones[context.scene.left_bone_selection]
-        self._right_target = context.scene.obj_selection.pose.bones[context.scene.right_bone_selection]
+        self._left_target = context.scene.obj_selection.pose.bones[
+            context.scene.left_bone_selection
+        ]
+        self._right_target = context.scene.obj_selection.pose.bones[
+            context.scene.right_bone_selection
+        ]
         self.create_new_action(context.scene.obj_selection)
         self._left_target
         self._wm = context.window_manager
@@ -225,6 +241,7 @@ class VRMOCAP_OT_set_rotation_mode(bpy.types.Operator):
 classes = (
     VRMOCAP_OT_enable_mocap_controllers,
     VRMOCAP_OT_disable_mocap_controllers,
+    VRMPCAP_OT_enabled_vr_preview_addon,
     VRMOCAP_OT_vr_save_position_start,
     VRMOCAP_OT_add_custom_properties,
     VRMOCAP_OT_set_rotation_mode,

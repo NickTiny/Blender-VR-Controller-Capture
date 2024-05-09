@@ -40,6 +40,7 @@ class VRMOCAP_PT_vr_save_position(bpy.types.Panel):
         enabled = scene.vr_motion_capture
 
         if addon_utils.check("viewport_vr_preview") == (False, False):
+            layout.operator("view3d.enabled_vr_preview_addon")
             layout.alert = True
             layout.label(text="Enable 'VR Scene Inspection' addon", icon="ERROR")
             return
