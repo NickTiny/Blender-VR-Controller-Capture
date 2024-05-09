@@ -13,7 +13,7 @@ import math
 import mathutils
 from math import radians
 from mathutils import Euler, Matrix, Quaternion, Vector
-from .custom_properties import custom_float_create
+from .props import custom_float_create
 from .mocap_actionmaps import vr_mocap_actionmaps_clear, vr_mocap_actionmaps_restore
 from . import constants
 import addon_utils
@@ -42,6 +42,7 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
     _left_target = None
     _right_target = None
     _wm = None
+    _vr_mocap = None
 
     @classmethod
     def poll(cls, context):
@@ -68,12 +69,12 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
             if idx == 0
             else self.get_bone_via_hand(context, "right")
         )
-        armature = context.scene.obj_selection
+        armature = self._vr_mocap.capture_obj
         bones = armature.pose.bones
         target_bone = bones[bone_name]
         # TODO Make this better
         offset = (
-            context.scene.vr_offset_left if idx == 0 else context.scene.vr_offset_right
+            self._vr_mocap.vr_offset_left if idx == 0 else self._vr_mocap.vr_offset_right
         )
         # quat_matrix = mathutils.Quaternion(offset).to_matrix().to_4x4()
         matrix_x = self._get_controller_pose_matrix(
@@ -91,15 +92,13 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
         return obj.animation_data.action
 
     def get_bone_via_hand(self, context, hand):
-        scene = context.scene
         if hand == "right":
-            return scene.right_bone_selection
+            return self._vr_mocap.right_bone_name
         else:
-            return scene.left_bone_selection
+            return self._vr_mocap.left_bone_name
 
     def save_controller_data(self, context, session_state, hand, key):
-        scene = context.scene
-        armature = scene.obj_selection
+        armature = self._vr_mocap.capture_obj
         bones = armature.pose.bones
         bone_name = self.get_bone_via_hand(context, hand)
         target = bones[bone_name]
@@ -113,7 +112,7 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
 
     def cancel(self, context):
         bpy.ops.screen.animation_cancel()
-        context.scene.vr_motion_capture = False
+        self._vr_mocap.recording_active = False
 
     def modal(self, context, event):
         if event.type in {'ESC'}:
@@ -140,23 +139,25 @@ class VRMOCAP_OT_vr_save_position_start(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
     def execute(self, context):
-        if context.scene.vr_motion_capture == True:
+        self._vr_mocap  = context.scene.vr_mocap
+        if self._vr_mocap.recording_active == True:
             self.report({'ERROR'}, "VR Mocap Session Already in Progress")
             return {'CANCELLED'}
         # TODO Check if properties are ready for capture
-        context.scene.vr_motion_capture = True
-        self._left_target = context.scene.obj_selection.pose.bones[
-            context.scene.left_bone_selection
+        self._vr_mocap.recording_active = True
+        self._left_target = self._vr_mocap.capture_obj.pose.bones[
+            self._vr_mocap.left_bone_name
         ]
-        self._right_target = context.scene.obj_selection.pose.bones[
-            context.scene.right_bone_selection
+        self._right_target = self._vr_mocap.capture_obj.pose.bones[
+            self._vr_mocap.right_bone_name
         ]
-        self.create_new_action(context.scene.obj_selection)
+        self.create_new_action(self._vr_mocap.capture_obj)
         self._left_target
         self._wm = context.window_manager
         self._wm.modal_handler_add(self)
         bpy.ops.screen.animation_play()
         return {'RUNNING_MODAL'}
+        
 
 
 class VRMOCAP_OT_start_mocap_session(bpy.types.Operator):
@@ -167,7 +168,7 @@ class VRMOCAP_OT_start_mocap_session(bpy.types.Operator):
         "This will disable all controller inputs, controller inputs will instead be captured "
         "Always Enable/Disable your MoCap session with this operator only"
     )
-
+    # TODO add check if recording is active don't stop session
     def safely_toggle_vr_session(self, context):
         bpy.ops.wm.xr_session_toggle()
         wait_time = 0
@@ -187,13 +188,13 @@ class VRMOCAP_OT_start_mocap_session(bpy.types.Operator):
             # Disable VR Mocap Action Maps if session is already active
             context.scene.vr_actions_enable = True
             vr_mocap_actionmaps_restore(context.window_manager.xr_session_state)
-            context.scene.vr_mocap_controllers = False
+            context.scene.vr_mocap.controller_override = False
             self.safely_toggle_vr_session(context)
         else:
             # Enable VR Mocap Action Maps if session is already inactive
             self.safely_toggle_vr_session(context)
             vr_mocap_actionmaps_clear(context.window_manager.xr_session_state)
-            context.scene.vr_mocap_controllers = True
+            context.scene.vr_mocap.controller_override = True
         return {'FINISHED'}
 
 
@@ -202,9 +203,10 @@ class VRMOCAP_OT_add_custom_properties(bpy.types.Operator):
     bl_label = "Add Custom Properties"
 
     def execute(self, context):
-        armature = context.scene.obj_selection
-        left_target = armature.pose.bones[context.scene.left_bone_selection]
-        right_target = armature.pose.bones[context.scene.right_bone_selection]
+        vr_mocap = context.scene.vr_mocap
+        armature = vr_mocap.capture_obj
+        left_target = armature.pose.bones[vr_mocap.left_bone_name]
+        right_target = armature.pose.bones[vr_mocap.right_bone_name]
         names = ["fly_forward", "fly_left", "nav_reset", "nav_grab", "teleport"]
         for target in [left_target, right_target]:
             for name in names:
@@ -221,7 +223,7 @@ class VRMOCAP_OT_set_rotation_mode(bpy.types.Operator):
     bone_name: bpy.props.StringProperty(name="Bone Name")
 
     def execute(self, context):
-        obj = context.scene.obj_selection
+        obj = context.scene.vr_mocap.capture_obj
         bone = obj.pose.bones[self.bone_name]
         bone.rotation_mode = constants.BONE_ROTATION_MODE
         return {'FINISHED'}
